@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Configure",
+      "type": "shell",
+      "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release",
+      "group": "build"
+    },
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "cmake --build build",
+      "dependsOn": "Configure",
+      "group": "build"
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "cd build && ctest",
+      "dependsOn": "Build",
+      "group": "test"
+    }
+  ]
+}
