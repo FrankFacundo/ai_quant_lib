@@ -11,8 +11,8 @@ for i, r in enumerate(returns):
     d = start + timedelta(days=i)
     ts.push_back(pq.DateTime(d.year, d.month, d.day), float(r))
 
-rv = pq.realized_vol(ts, window=30)
-rv_series = pq.realized_vol_series(ts, window=30)
+rv = pq.realized_vol(ts, 30)
+rv_series = pq.realized_vol_series(ts, 30)
 print("Latest realized vol (annualized):", rv)
 
 plt.plot([v for v in rv_series.values()])

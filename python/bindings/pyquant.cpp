@@ -7,6 +7,7 @@
 
 #include "quant/core/Date.hpp"
 #include "quant/core/TimeSeries.hpp"
+#include "quant/instruments/Instrument.hpp"
 #include "quant/instruments/EuropeanOption.hpp"
 #include "quant/instruments/BarrierOption.hpp"
 #include "quant/instruments/VanillaSwap.hpp"
@@ -37,7 +38,17 @@ PYBIND11_MODULE(pyquant, m) {
         .def(py::init<>())
         .def("push_back", &core::TimeSeries<double>::push_back)
         .def("size", &core::TimeSeries<double>::size)
+        .def("times", &core::TimeSeries<double>::times, py::return_value_policy::reference_internal)
         .def("values", &core::TimeSeries<double>::values, py::return_value_policy::reference_internal);
+
+    py::class_<core::TimeSeries<Eigen::VectorXd>>(m, "TimeSeriesVector")
+        .def(py::init<>())
+        .def("push_back", &core::TimeSeries<Eigen::VectorXd>::push_back)
+        .def("size", &core::TimeSeries<Eigen::VectorXd>::size)
+        .def("times", &core::TimeSeries<Eigen::VectorXd>::times, py::return_value_policy::reference_internal)
+        .def("values", &core::TimeSeries<Eigen::VectorXd>::values, py::return_value_policy::reference_internal);
+
+    py::class_<instruments::Instrument>(m, "Instrument");
 
     py::class_<instruments::EuropeanOption, instruments::Instrument>(m, "EuropeanOption")
         .def(py::init<instruments::OptionType, double, double, double, double, double, double>(),
@@ -87,8 +98,18 @@ PYBIND11_MODULE(pyquant, m) {
 
     py::class_<timeseries::ARIMAModel>(m, "ARIMAModel")
         .def(py::init<int, int, int>())
-        .def("fit", &timeseries::ARIMAModel::fit)
-        .def("forecast", &timeseries::ARIMAModel::forecast);
+        .def("fit", [](timeseries::ARIMAModel& self, const core::TimeSeries<double>& ts) {
+            core::TimeSeries<Eigen::VectorXd> conv;
+            for (std::size_t i = 0; i < ts.size(); ++i) {
+                Eigen::VectorXd v(1);
+                v(0) = ts.values()[i];
+                conv.push_back(ts.times()[i], v);
+            }
+            self.fit(conv);
+        })
+        .def("forecast", [](const timeseries::ARIMAModel& self, std::size_t horizon) {
+            return self.forecast(horizon);
+        });
 
     py::class_<timeseries::VARModel>(m, "VARModel")
         .def(py::init<int>())
@@ -174,7 +195,7 @@ PYBIND11_MODULE(pyquant, m) {
         .def_readonly("trades", &backtest::BacktestResult::trades);
 
     py::class_<backtest::Strategy, std::shared_ptr<backtest::Strategy>>(bt, "Strategy");
-    py::class_<backtest::MovingAverageCrossStrategy, backtest::Strategy>(bt, "MovingAverageCrossStrategy")
+    py::class_<backtest::MovingAverageCrossStrategy, backtest::Strategy, std::shared_ptr<backtest::MovingAverageCrossStrategy>>(bt, "MovingAverageCrossStrategy")
         .def(py::init<std::size_t, std::size_t, double, double, double>(),
              py::arg("short_window"), py::arg("long_window"), py::arg("qty"), py::arg("transaction_cost") = 0.0, py::arg("slippage") = 0.0);
 

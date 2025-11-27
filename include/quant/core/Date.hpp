@@ -3,8 +3,8 @@
 #include <chrono>
 #include <compare>
 #include <set>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace quant::core {
 
@@ -23,8 +23,7 @@ public:
     unsigned month() const { return month_; }
     unsigned day() const { return day_; }
 
-    std::chrono::year_month_day to_chrono() const;
-    std::chrono::sys_days to_sys_days() const;
+    std::chrono::system_clock::time_point to_time_point() const;
 
     std::string to_string() const;
 
@@ -70,4 +69,3 @@ long day_count(const Date& start, const Date& end, DayCountConvention conv);
 double year_fraction(const Date& start, const Date& end, DayCountConvention conv);
 
 } // namespace quant::core
-

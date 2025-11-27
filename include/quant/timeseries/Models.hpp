@@ -4,6 +4,7 @@
 #include "quant/core/TimeSeries.hpp"
 
 #include <optional>
+#include <memory>
 #include <random>
 #include <vector>
 
@@ -110,6 +111,7 @@ private:
     double feature_subsample_;
     std::vector<std::unique_ptr<Node>> forest_;
     std::vector<int> feature_index_; // features used for each tree root
+    Eigen::VectorXd last_input_;
 };
 
 class FeedForwardNN : public TimeSeriesModel {
@@ -173,4 +175,3 @@ private:
 };
 
 } // namespace quant::timeseries
-

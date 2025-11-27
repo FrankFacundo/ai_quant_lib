@@ -64,11 +64,13 @@ void RandomForestRegressor::fit(const quant::core::TimeSeries<Eigen::VectorXd>& 
     }
     feature_index_.assign(trees_, 0);
     if (!X.empty()) last_input_ = X.back();
+    else last_input_.resize(0);
 }
 
 Eigen::VectorXd RandomForestRegressor::forecast(std::size_t horizon,
                                                 const std::vector<Eigen::VectorXd>& future_static_features) const {
     Eigen::VectorXd out = Eigen::VectorXd::Zero(static_cast<int>(horizon));
+    if (last_input_.size() == 0) return out;
     Eigen::VectorXd state = last_input_;
     for (std::size_t h = 0; h < horizon; ++h) {
         double pred = 0.0;
@@ -155,4 +157,3 @@ void FeedForwardNN::train_sample(const Eigen::VectorXd& x, const Eigen::VectorXd
 }
 
 } // namespace quant::timeseries
-

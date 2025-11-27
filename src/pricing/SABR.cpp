@@ -1,6 +1,7 @@
 #include "quant/pricing/SABR.hpp"
 
 #include <cmath>
+#include <stdexcept>
 
 namespace quant::pricing {
 

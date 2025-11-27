@@ -44,8 +44,12 @@ public:
         TimeSeries<T> out;
         if (size() < 2) return out;
         out.times_.assign(times_.begin() + 1, times_.end());
-        for (std::size_t i = 1; i < size(); ++i) {
-            out.values_.push_back(values_[i] - values_[i - 1]);
+        if constexpr (requires(const T& a, const T& b) { a - b; }) {
+            for (std::size_t i = 1; i < size(); ++i) {
+                out.values_.push_back(values_[i] - values_[i - 1]);
+            }
+        } else {
+            throw QuantError("TimeSeries::diff not supported for this type");
         }
         return out;
     }
@@ -94,4 +98,3 @@ private:
 };
 
 } // namespace quant::core
-

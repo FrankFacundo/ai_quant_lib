@@ -1,6 +1,7 @@
 #include "quant/core/Date.hpp"
 
 #include <cmath>
+#include <ctime>
 #include <iomanip>
 #include <sstream>
 
@@ -8,12 +9,14 @@ namespace quant::core {
 
 Date::Date(int y, unsigned m, unsigned d) : year_(y), month_(m), day_(d) {}
 
-std::chrono::year_month_day Date::to_chrono() const {
-    return std::chrono::year{year_} / std::chrono::month{month_} / std::chrono::day{day_};
-}
-
-std::chrono::sys_days Date::to_sys_days() const {
-    return std::chrono::sys_days{to_chrono()};
+std::chrono::system_clock::time_point Date::to_time_point() const {
+    std::tm tm{};
+    tm.tm_year = year_ - 1900;
+    tm.tm_mon = static_cast<int>(month_) - 1;
+    tm.tm_mday = static_cast<int>(day_);
+    tm.tm_isdst = -1;
+    std::time_t t = std::mktime(&tm);
+    return std::chrono::system_clock::from_time_t(t);
 }
 
 std::string Date::to_string() const {
@@ -27,14 +30,22 @@ DateTime::DateTime() : tp_(std::chrono::system_clock::now()) {}
 DateTime::DateTime(std::chrono::system_clock::time_point tp) : tp_(tp) {}
 
 DateTime::DateTime(int y, unsigned m, unsigned d, unsigned hh, unsigned mm, unsigned ss) {
-    std::chrono::sys_days day = std::chrono::sys_days{std::chrono::year{y} / std::chrono::month{m} / std::chrono::day{d}};
-    tp_ = std::chrono::system_clock::time_point{day} + std::chrono::hours{hh} + std::chrono::minutes{mm} + std::chrono::seconds{ss};
+    std::tm tm{};
+    tm.tm_year = y - 1900;
+    tm.tm_mon = static_cast<int>(m) - 1;
+    tm.tm_mday = static_cast<int>(d);
+    tm.tm_hour = static_cast<int>(hh);
+    tm.tm_min = static_cast<int>(mm);
+    tm.tm_sec = static_cast<int>(ss);
+    tm.tm_isdst = -1;
+    std::time_t t = std::mktime(&tm);
+    tp_ = std::chrono::system_clock::from_time_t(t);
 }
 
 Date DateTime::date() const {
-    auto day = std::chrono::floor<std::chrono::days>(tp_);
-    std::chrono::year_month_day ymd = std::chrono::year_month_day{day};
-    return Date(static_cast<int>(ymd.year()), static_cast<unsigned>(ymd.month()), static_cast<unsigned>(ymd.day()));
+    auto tt = std::chrono::system_clock::to_time_t(tp_);
+    std::tm tm = *std::localtime(&tt);
+    return Date(tm.tm_year + 1900, static_cast<unsigned>(tm.tm_mon + 1), static_cast<unsigned>(tm.tm_mday));
 }
 
 std::string DateTime::to_string() const {
@@ -48,30 +59,30 @@ std::string DateTime::to_string() const {
 }
 
 bool Calendar::is_business_day(const Date& d) const {
-    auto wd = std::chrono::weekday{d.to_sys_days()};
-    if (wd == std::chrono::Saturday || wd == std::chrono::Sunday) return false;
+    auto tt = std::chrono::system_clock::to_time_t(d.to_time_point());
+    std::tm tm = *std::localtime(&tt);
+    int wday = tm.tm_wday; // 0 = Sunday
+    if (wday == 0 || wday == 6) return false;
     return holidays_.find(d) == holidays_.end();
 }
 
 Date Calendar::adjust(const Date& d) const {
     Date adj = d;
-    auto day = adj.to_sys_days();
     while (!is_business_day(adj)) {
-        day += std::chrono::days{1};
-        std::chrono::year_month_day ymd{day};
-        adj = Date(static_cast<int>(ymd.year()), static_cast<unsigned>(ymd.month()), static_cast<unsigned>(ymd.day()));
+        adj = advance(adj, 1);
     }
     return adj;
 }
 
 Date Calendar::advance(const Date& d, int days) const {
-    auto day = d.to_sys_days() + std::chrono::days{days};
-    std::chrono::year_month_day ymd{day};
-    return Date(static_cast<int>(ymd.year()), static_cast<unsigned>(ymd.month()), static_cast<unsigned>(ymd.day()));
+    auto tp = d.to_time_point() + std::chrono::hours{24 * days};
+    auto tt = std::chrono::system_clock::to_time_t(tp);
+    std::tm tm = *std::localtime(&tt);
+    return Date(tm.tm_year + 1900, static_cast<unsigned>(tm.tm_mon + 1), static_cast<unsigned>(tm.tm_mday));
 }
 
 long day_count(const Date& start, const Date& end, DayCountConvention conv) {
-    auto days = (end.to_sys_days() - start.to_sys_days()).count();
+    auto delta = std::chrono::duration_cast<std::chrono::hours>(end.to_time_point() - start.to_time_point()).count() / 24;
     if (conv == DayCountConvention::THIRTY_360) {
         auto d1 = start.day();
         auto d2 = end.day();
@@ -81,7 +92,7 @@ long day_count(const Date& start, const Date& end, DayCountConvention conv) {
         auto y2 = end.year();
         return (360 * (y2 - y1) + 30 * static_cast<long>(m2 - m1) + (static_cast<long>(d2) - static_cast<long>(d1)));
     }
-    return days;
+    return delta;
 }
 
 double year_fraction(const Date& start, const Date& end, DayCountConvention conv) {
@@ -98,4 +109,3 @@ double year_fraction(const Date& start, const Date& end, DayCountConvention conv
 }
 
 } // namespace quant::core
-

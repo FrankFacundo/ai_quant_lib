@@ -30,10 +30,20 @@ std::vector<Date> VanillaSwap::build_dates(const Schedule& schedule) const {
     int months = 12 / static_cast<int>(schedule.frequency);
     Date current = start;
     while (current < end) {
-        auto ymd = current.to_chrono();
-        auto next = quant::core::Date(static_cast<int>((ymd.year() + std::chrono::months{months}).year()),
-                                      static_cast<unsigned>((ymd.month() + std::chrono::months{months}).month()),
-                                      current.day());
+        auto add_months = [](const Date& d, int m_add) {
+            auto is_leap = [](int y) { return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0); };
+            int y = d.year();
+            int m = static_cast<int>(d.month());
+            int total = m + m_add;
+            y += (total - 1) / 12;
+            m = ((total - 1) % 12) + 1;
+            unsigned day = d.day();
+            static const unsigned dim[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+            unsigned max_day = (m == 2 && is_leap(y)) ? 29 : dim[m - 1];
+            if (day > max_day) day = max_day;
+            return Date(y, static_cast<unsigned>(m), day);
+        };
+        auto next = add_months(current, months);
         if (next > end) next = end;
         dates.push_back(next);
         current = next;
@@ -87,4 +97,3 @@ double VanillaSwap::fair_rate() const {
 }
 
 } // namespace quant::instruments
-

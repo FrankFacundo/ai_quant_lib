@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include "quant/pricing/BlackScholes.hpp"
 #include "quant/instruments/EuropeanOption.hpp"
+#include "quant/instruments/BarrierOption.hpp"
+#include "quant/pricing/BarrierOption.hpp"
+#include "quant/pricing/SABR.hpp"
 
 using namespace quant::instruments;
 using namespace quant::pricing;
